@@ -3,6 +3,5 @@
 
     <string name="app_name">POC3_HeadGestures</string>
     <string name="title_activity_head_detection">Head detection</string>
-    <string name="hello_world">Hello world!</string>
 
 </resources>

@@ -8,6 +8,7 @@
         android:label="@string/app_name" >
         <activity
             android:name=".HeadDetectionActivity"
+            android:immersive="true"
             android:icon="@drawable/ic_glass_logo"
             android:label="@string/title_activity_head_detection">
             <intent-filter>
