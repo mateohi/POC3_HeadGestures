@@ -13,7 +13,17 @@ import com.google.common.collect.Queues;
 import java.util.Iterator;
 import java.util.Queue;
 
-public class HeadGestureDetector {
+/**
+ * Calculando que se tardan entre 1 y 2 segundos realizar un nod, se guardan los 50 valores del
+ * angulo correspondiente cada 50 milisegundos. Esto es, se guardan los intervalos cada 50
+ * milisegundos de los ultimos 2,5 segundos.
+ *
+ * A partir de esto, se analiza que se tengan dos picos "high" y "low" entre los valores, lo que
+ * representaria dos subidas y bajadas de cabeza.
+ *
+ *  */
+
+ public class HeadGestureDetector {
 
     private static final String TAG = HeadGestureDetector.class.getSimpleName();
 
@@ -25,11 +35,10 @@ public class HeadGestureDetector {
     private static final Float HEAD_SHAKE_HIGH_ANGLE = new Float(1.0);
 
     private SensorManager sensorManager;
-
     private SensorEventListener sensorEventListener;
     private Context context;
-
     private HeadGestureListener headGestureListener;
+
     private Queue<Float> nodAngles = Queues.synchronizedQueue(EvictingQueue.<Float>create(ANGLES_QUEUE_SIZE));
     private Queue<Float> headShakeAngles = Queues.synchronizedQueue(EvictingQueue.<Float>create(ANGLES_QUEUE_SIZE));
 
@@ -56,13 +65,12 @@ public class HeadGestureDetector {
             public void run() {
                 while (check) {
                     try {
-                        Thread.sleep(100);
-                        nodAngles.add(angleNod);
+                        Thread.sleep(50);
                     }
-                    catch (InterruptedException e) {
-                    }
+                    catch (InterruptedException e) { }
 
-                    Log.i(TAG, "AngleNod: " + angleNod);
+                    Log.i(TAG, "AngleA: " + angleA);
+                    Log.i(TAG, "AngleB: " + angleB);
                     checkIfNodOrHeadShake();
                 }
             }
@@ -119,7 +127,7 @@ public class HeadGestureDetector {
 
     private void checkIfNodOrHeadShake() {
         boolean isNod = isNod();
-        boolean isHeadShake = false;//isHeadShake();
+        boolean isHeadShake = isHeadShake();
 
         if (isNod && !isHeadShake) {
             logNodValues();
@@ -128,6 +136,7 @@ public class HeadGestureDetector {
         }
 
         if (!isNod && isHeadShake) {
+            emptyHeadShakeAnglesQueue();
             this.headGestureListener.onHeadShake();
         }
     }
@@ -188,9 +197,17 @@ public class HeadGestureDetector {
     }
 
     private void emptyNodAnglesQueue() {
-        synchronized (nodAngles) {
-            while (!nodAngles.isEmpty()) {
-                nodAngles.poll();
+        synchronized (this.nodAngles) {
+            while (!this.nodAngles.isEmpty()) {
+                this.nodAngles.poll();
+            }
+        }
+    }
+
+    private void emptyHeadShakeAnglesQueue() {
+        synchronized (this.headShakeAngles) {
+            while (!this.headShakeAngles.isEmpty()) {
+                this.headShakeAngles.poll();
             }
         }
     }
@@ -205,6 +222,20 @@ public class HeadGestureDetector {
         synchronized (nodAngles) {
             StringBuilder values = new StringBuilder();
             Iterator<Float> i = nodAngles.iterator();
+            while (i.hasNext()) {
+                if (values.length() > 0) {
+                    values.append(';');
+                }
+                values.append(i.next());
+            }
+            Log.i(TAG, values.toString());
+        }
+    }
+
+    private void logHeadShakeValues() {
+        synchronized (headShakeAngles) {
+            StringBuilder values = new StringBuilder();
+            Iterator<Float> i = headShakeAngles.iterator();
             while (i.hasNext()) {
                 if (values.length() > 0) {
                     values.append(';');
