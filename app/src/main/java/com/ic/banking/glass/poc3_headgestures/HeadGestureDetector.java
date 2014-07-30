@@ -1,6 +1,9 @@
 package com.ic.banking.glass.poc3_headgestures;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -34,10 +37,14 @@ import java.util.Queue;
     private static final Float HEAD_SHAKE_LOW_ANGLE = new Float(-1.0);
     private static final Float HEAD_SHAKE_HIGH_ANGLE = new Float(1.0);
 
-    private SensorManager sensorManager;
-    private SensorEventListener sensorEventListener;
     private Context context;
     private HeadGestureListener headGestureListener;
+
+    private IntentFilter winkFilter;
+    private BroadcastReceiver winkReceiver;
+
+    private SensorManager sensorManager;
+    private SensorEventListener sensorEventListener;
 
     private Queue<Float> nodAngles = Queues.synchronizedQueue(EvictingQueue.<Float>create(ANGLES_QUEUE_SIZE));
     private Queue<Float> headShakeAngles = Queues.synchronizedQueue(EvictingQueue.<Float>create(ANGLES_QUEUE_SIZE));
@@ -57,6 +64,30 @@ import java.util.Queue;
         registerSensors();
 
         createCheckThread();
+        createWinkFilterAndReceiver();
+    }
+
+    private void createWinkFilterAndReceiver() {
+        this.winkFilter = new IntentFilter("com.google.android.glass.action.EYE_GESTURE");
+        this.winkFilter.setPriority(1000);
+        this.winkReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("WINK".equals(intent.getStringExtra("gesture"))) {
+                    abortBroadcast();
+                    Log.i(TAG, "Wink received");
+                    headGestureListener.onWink();
+                }
+            }
+        };
+    }
+
+    private void registerWinkReceiver() {
+        this.context.registerReceiver(this.winkReceiver, this.winkFilter);
+    }
+
+    private void unregisterWinkReceiver() {
+        this.context.unregisterReceiver(this.winkReceiver);
     }
 
     private void createCheckThread() {
@@ -65,7 +96,7 @@ import java.util.Queue;
             public void run() {
                 while (check) {
                     try {
-                        Thread.sleep(50);
+                        Thread.sleep(500);
                     }
                     catch (InterruptedException e) { }
 
@@ -78,15 +109,18 @@ import java.util.Queue;
     }
 
     public void stopListening() {
+        unregisterWinkReceiver();
         if (this.sensorEventListener != null) {
             this.sensorManager.unregisterListener(this.sensorEventListener);
         }
 
         this.check = false;
         emptyNodAnglesQueue();
+        emptyHeadShakeAnglesQueue();
     }
 
     public void startListening() {
+        registerWinkReceiver();
         registerSensors();
 
         this.check = true;
@@ -112,7 +146,7 @@ import java.util.Queue;
 
     private void registerSensors() {
         this.sensorManager = (SensorManager) this.context.getSystemService(Context.SENSOR_SERVICE);
-        this.sensorManager.registerListener(sensorEventListener,
+        this.sensorManager.registerListener(this.sensorEventListener,
                 this.sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY),
                 SensorManager.SENSOR_DELAY_NORMAL);
     }
@@ -145,7 +179,7 @@ import java.util.Queue;
         int lowPoints = 0;
         int highPoints = 0;
 
-        for (Float nodAngle : nodAngles) {
+        for (Float nodAngle : this.nodAngles) {
             if (nodAngle > NOD_HIGH_ANGLE) {
                 highPoints++;
             }
@@ -160,7 +194,7 @@ import java.util.Queue;
         int lowPoints = 0;
         int highPoints = 0;
 
-        for (Float headShakeAngle : headShakeAngles) {
+        for (Float headShakeAngle : this.headShakeAngles) {
             if (headShakeAngle > HEAD_SHAKE_HIGH_ANGLE) {
                 highPoints++;
             }
