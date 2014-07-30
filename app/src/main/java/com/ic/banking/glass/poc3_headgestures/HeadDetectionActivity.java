@@ -35,14 +35,12 @@ public class HeadDetectionActivity extends Activity {
 
             @Override
             public void onHeadShake() {
-                Toast.makeText(getApplicationContext(), "Head shake", Toast.LENGTH_SHORT);
-                playSound(Sounds.SUCCESS);
+                headShake();
             }
 
             @Override
             public void onWink() {
-                Toast.makeText(getApplicationContext(), "Wink", Toast.LENGTH_SHORT);
-                playSound(Sounds.SUCCESS);
+                wink();
             }
         });
     }
@@ -51,7 +49,27 @@ public class HeadDetectionActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(getApplicationContext(), "Nod", Toast.LENGTH_SHORT);
+                Toast.makeText(getApplicationContext(), "Nod", Toast.LENGTH_SHORT).show();
+                playSound(Sounds.SUCCESS);
+            }
+        });
+    }
+
+    private void headShake() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(getApplicationContext(), "Head shake", Toast.LENGTH_SHORT).show();
+                playSound(Sounds.SUCCESS);
+            }
+        });
+    }
+
+    private void wink() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(getApplicationContext(), "Wink", Toast.LENGTH_SHORT).show();
                 playSound(Sounds.SUCCESS);
             }
         });
