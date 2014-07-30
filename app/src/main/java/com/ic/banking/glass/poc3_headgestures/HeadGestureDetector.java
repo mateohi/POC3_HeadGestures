@@ -17,10 +17,10 @@ public class HeadGestureDetector {
 
     private static final String TAG = HeadGestureDetector.class.getSimpleName();
 
-    private static final int ANGLES_QUEUE_SIZE = 100;
+    private static final int ANGLES_QUEUE_SIZE = 50;
 
-    private static final Float NOD_LOW_ANGLE = new Float(-0.3);
-    private static final Float NOD_HIGH_ANGLE = new Float(0.3);
+    private static final Float NOD_LOW_ANGLE = new Float(-0.1);
+    private static final Float NOD_HIGH_ANGLE = new Float(0.2);
     private static final Float HEAD_SHAKE_LOW_ANGLE = new Float(-1.0);
     private static final Float HEAD_SHAKE_HIGH_ANGLE = new Float(1.0);
 
@@ -56,7 +56,7 @@ public class HeadGestureDetector {
             public void run() {
                 while (check) {
                     try {
-                        Thread.sleep(250);
+                        Thread.sleep(100);
                         nodAngles.add(angleNod);
                     }
                     catch (InterruptedException e) {
@@ -75,6 +75,7 @@ public class HeadGestureDetector {
         }
 
         this.check = false;
+        emptyNodAnglesQueue();
     }
 
     public void startListening() {
