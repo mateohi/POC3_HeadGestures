@@ -32,11 +32,6 @@ import java.util.Queue;
 
     private static final int ANGLES_QUEUE_SIZE = 50;
 
-    private static final Float NOD_LOW_ANGLE = new Float(-0.1);
-    private static final Float NOD_HIGH_ANGLE = new Float(0.2);
-    private static final Float HEAD_SHAKE_LOW_ANGLE = new Float(-1.0);
-    private static final Float HEAD_SHAKE_HIGH_ANGLE = new Float(1.0);
-
     private Context context;
     private HeadGestureListener headGestureListener;
 
@@ -96,13 +91,15 @@ import java.util.Queue;
             public void run() {
                 while (check) {
                     try {
-                        Thread.sleep(500);
+                        Thread.sleep(50);
+                        nodAngles.add(angleNod);
+                        checkIfNodOrHeadShake();
                     }
                     catch (InterruptedException e) { }
 
-                    Log.i(TAG, "AngleA: " + angleA);
-                    Log.i(TAG, "AngleB: " + angleB);
-                    checkIfNodOrHeadShake();
+                    Log.i(TAG, "AngleNod: " + angleNod); // BORRAR
+                    // Log.i(TAG, "AngleA: " + angleA); // BORRAR
+                    // Log.i(TAG, "AngleB: " + angleB); // BORRAR
                 }
             }
         });
@@ -136,8 +133,8 @@ import java.util.Queue;
             @Override
             public void onSensorChanged(SensorEvent event) {
                 if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
-                    test(event);
-                    //calculateNewAngles(event);
+                    test(event); // BORRAR
+                    calculateNewAngles(event);
                 }
             }
         };
@@ -152,57 +149,28 @@ import java.util.Queue;
     }
 
     private void calculateNewAngles(SensorEvent event) {
-        Float nodAngle = calculateNodAngle(event);
-        Float headShakeAngle = calculateHeadShakeAngle(event);
-
-        this.nodAngles.add(nodAngle);
-        this.headShakeAngles.add(headShakeAngle);
+        this.angleNod = calculateNodAngle(event);
+        //this.headShakeAngle = calculateHeadShakeAngle(event);
     }
 
     private void checkIfNodOrHeadShake() {
-        boolean isNod = isNod();
-        boolean isHeadShake = isHeadShake();
+        Float[] nodAnglesArray = this.nodAngles.toArray(new Float[this.nodAngles.size()]);
+        Float[] headShakeAnglesArray = this.headShakeAngles.toArray(new Float[this.headShakeAngles.size()]);
+
+        boolean isNod = HeadGestureUtils.isNod(nodAnglesArray);
+        boolean isHeadShake = HeadGestureUtils.isHeadShake(headShakeAnglesArray);
 
         if (isNod && !isHeadShake) {
-            logNodValues();
+            logNodValues(); // BORRAR
             emptyNodAnglesQueue();
             this.headGestureListener.onNod();
         }
 
         if (!isNod && isHeadShake) {
+            logHeadShakeValues(); // BORRAR
             emptyHeadShakeAnglesQueue();
             this.headGestureListener.onHeadShake();
         }
-    }
-
-    private boolean isNod() {
-        int lowPoints = 0;
-        int highPoints = 0;
-
-        for (Float nodAngle : this.nodAngles) {
-            if (nodAngle > NOD_HIGH_ANGLE) {
-                highPoints++;
-            }
-            if (nodAngle < NOD_LOW_ANGLE) {
-                lowPoints++;
-            }
-        }
-        return lowPoints >= 2 && highPoints >= 2;
-    }
-
-    private boolean isHeadShake() {
-        int lowPoints = 0;
-        int highPoints = 0;
-
-        for (Float headShakeAngle : this.headShakeAngles) {
-            if (headShakeAngle > HEAD_SHAKE_HIGH_ANGLE) {
-                highPoints++;
-            }
-            if (headShakeAngle < HEAD_SHAKE_LOW_ANGLE) {
-                lowPoints++;
-            }
-        }
-        return lowPoints >= 2 && highPoints >= 2;
     }
 
     private Float calculateHeadShakeAngle(SensorEvent event) {
@@ -249,7 +217,6 @@ import java.util.Queue;
     private void test(SensorEvent event) {
         angleA = computeOrientationA(event);
         angleB = computeOrientationB(event);
-        angleNod = calculateNodAngle(event);
     }
 
     private void logNodValues() {
