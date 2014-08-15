@@ -16,20 +16,29 @@ import com.google.common.collect.Queues;
 import java.util.Iterator;
 import java.util.Queue;
 
-/**
+/*
+ *      Calculo del Nod:
+ * ------------------------------------------------------------------------------------------------
  * Calculando que se tardan entre 1 y 2 segundos realizar un nod, se guardan los 50 valores del
  * angulo correspondiente cada 50 milisegundos. Esto es, se guardan los intervalos cada 50
  * milisegundos de los ultimos 2,5 segundos.
  *
  * A partir de esto, se analiza que se tengan dos picos "high" y "low" entre los valores, lo que
  * representaria dos subidas y bajadas de cabeza.
+ *------------------------------------------------------------------------------------------------
  *
- *  */
+ *      Calculo del headshake:
+ * ------------------------------------------------------------------------------------------------
+ * Explicacion
+ * ------------------------------------------------------------------------------------------------
+ *
+ */
 
- public class HeadGestureDetector {
+public class HeadGestureDetector {
 
     private static final String TAG = HeadGestureDetector.class.getSimpleName();
 
+    private static final int ARM_DISPLACEMENT_DEGREES = 6;
     private static final int ANGLES_QUEUE_SIZE = 50;
 
     private Context context;
@@ -47,9 +56,8 @@ import java.util.Queue;
     private Thread checkThread;
     private boolean check;
 
-    private float angleA;
-    private float angleB;
-    private float angleNod;
+    private float nodAngle;
+    private float headShakeAngle;
 
     public HeadGestureDetector(Context context, HeadGestureListener headGestureListener) {
         this.context = context;
@@ -92,14 +100,16 @@ import java.util.Queue;
                 while (check) {
                     try {
                         Thread.sleep(50);
-                        nodAngles.add(angleNod);
+                        nodAngles.add(nodAngle);
+                        headShakeAngles.add(headShakeAngle);
                         checkIfNodOrHeadShake();
                     }
-                    catch (InterruptedException e) { }
+                    catch (InterruptedException e) {
+                        // Too bad
+                    }
 
-                    Log.i(TAG, "AngleNod: " + angleNod); // BORRAR
-                    // Log.i(TAG, "AngleA: " + angleA); // BORRAR
-                    // Log.i(TAG, "AngleB: " + angleB); // BORRAR
+                    //Log.i("      nod: ", Float.toString(nodAngle)); // BORRAR
+                    //Log.i("headshake: ", Float.toString(headShakeAngle)); // BORRAR
                 }
             }
         });
@@ -121,19 +131,21 @@ import java.util.Queue;
         registerSensors();
 
         this.check = true;
-        this.checkThread.start();
+        if (!this.checkThread.isAlive()) {
+            this.checkThread.start();
+        }
     }
 
     private SensorEventListener createSensorEventListener() {
         SensorEventListener sensorEventListener = new SensorEventListener() {
 
             @Override
-            public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            }
 
             @Override
             public void onSensorChanged(SensorEvent event) {
-                if (event.sensor.getType() == Sensor.TYPE_GRAVITY) {
-                    test(event); // BORRAR
+                if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
                     calculateNewAngles(event);
                 }
             }
@@ -146,11 +158,24 @@ import java.util.Queue;
         this.sensorManager.registerListener(this.sensorEventListener,
                 this.sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY),
                 SensorManager.SENSOR_DELAY_NORMAL);
+        this.sensorManager.registerListener(this.sensorEventListener,
+                this.sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR),
+                SensorManager.SENSOR_DELAY_UI);
     }
 
     private void calculateNewAngles(SensorEvent event) {
-        this.angleNod = calculateNodAngle(event);
-        //this.headShakeAngle = calculateHeadShakeAngle(event);
+        float[] rotationMatrix = new float[16];
+        float[] orientation = new float[9];
+
+        SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+        SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_X,
+                SensorManager.AXIS_Z, rotationMatrix);
+        SensorManager.getOrientation(rotationMatrix, orientation);
+
+        float magneticHeading = (float) Math.toDegrees(orientation[0]);
+        this.headShakeAngle = mod(magneticHeading, 360.0f) - ARM_DISPLACEMENT_DEGREES;
+
+        this.nodAngle = (float) Math.toDegrees(orientation[1]);
     }
 
     private void checkIfNodOrHeadShake() {
@@ -173,31 +198,6 @@ import java.util.Queue;
         }
     }
 
-    private Float calculateHeadShakeAngle(SensorEvent event) {
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
-    private Float calculateNodAngle(SensorEvent event) {
-        float angle = (float) -Math.atan(event.values[2]
-                / Math.sqrt(event.values[1] * event.values[1] + event.values[0] * event.values[0]));
-
-        return angle;
-    }
-
-    private Float computeOrientationA(SensorEvent event) {
-        float angle = (float) -Math.atan(event.values[0]
-                / Math.sqrt(event.values[1] * event.values[1] + event.values[2] * event.values[2]));
-
-        return angle;
-    }
-
-    private Float computeOrientationB(SensorEvent event) {
-        float angle = (float) -Math.atan(event.values[1]
-                / Math.sqrt(event.values[2] * event.values[2] + event.values[0] * event.values[0]));
-
-        return angle;
-    }
-
     private void emptyNodAnglesQueue() {
         synchronized (this.nodAngles) {
             while (!this.nodAngles.isEmpty()) {
@@ -212,11 +212,6 @@ import java.util.Queue;
                 this.headShakeAngles.poll();
             }
         }
-    }
-
-    private void test(SensorEvent event) {
-        angleA = computeOrientationA(event);
-        angleB = computeOrientationB(event);
     }
 
     private void logNodValues() {
@@ -245,5 +240,11 @@ import java.util.Queue;
             }
             Log.i(TAG, values.toString());
         }
+    }
+
+    // Headshake
+
+    public static float mod(float a, float b) {
+        return (a % b + b) % b;
     }
 }
