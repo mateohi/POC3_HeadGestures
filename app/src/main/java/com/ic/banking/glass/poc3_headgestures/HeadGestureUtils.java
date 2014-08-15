@@ -5,70 +5,78 @@ import java.util.List;
 
 public class HeadGestureUtils {
 
-    private static final Float NOD_LOW_ANGLE = new Float(-0.075);
-    private static final Float NOD_HIGH_ANGLE = new Float(0.175);
-
-    private static final Float HEAD_SHAKE_LOW_ANGLE = new Float(-1.0);
-    private static final Float HEAD_SHAKE_HIGH_ANGLE = new Float(1.0);
+    private static final int ANGLE_DIFFERENCE_AMOUNT = 3;
+    private static final Float ANGLE_DEGREES = new Float(15);
 
     public static boolean isNod(Float[] values) {
-        return check(values, NOD_HIGH_ANGLE, NOD_LOW_ANGLE, 2, 2);
+        return check(values, ANGLE_DEGREES, ANGLE_DIFFERENCE_AMOUNT);
     }
 
     public static boolean isHeadShake(Float[] values) {
-        return check(values, HEAD_SHAKE_HIGH_ANGLE, HEAD_SHAKE_LOW_ANGLE, 2, 2);
+        return check(values, ANGLE_DEGREES, ANGLE_DIFFERENCE_AMOUNT);
     }
 
-    private static boolean check(Float[] values, Float high, Float low, int minHighs, int minLows) {
+    private static boolean check(Float[] values, Float angle, int amount) {
         List<Float> simplifiedValues = simplifiedValues(values);
+        List<Float> differences = differenciateValues(simplifiedValues);
 
-        int lows = 0;
-        int highs = 0;
+        int actual = 0;
 
-        for (Float value : simplifiedValues) {
-            if (value >= high) {
-                highs++;
-            }
-            if (value <= low) {
-                lows++;
+        for (Float difference : differences) {
+            if (difference >= angle) {
+                actual++;
             }
         }
 
-        return lows >= minLows && highs >= minHighs;
+        return actual >= amount;
+    }
+
+    private static List<Float> differenciateValues(List<Float> values) {
+        List<Float> differences = new ArrayList<Float>();
+        Float[] angles = values.toArray(new Float[values.size()]);
+
+        for (int i = 0; i < angles.length - 1; i++) {
+            differences.add(Math.abs(angles[i] - angles[i + 1]));
+        }
+
+        return differences;
     }
 
     private static List<Float> simplifiedValues(Float[] values) {
         List<Float> simplifiedValues = new ArrayList<Float>();
-        for (int i = 0; i < values.length; i++) {
-            if (values[i] <= 0) {
-                // Si estoy en uno negativo, agarro el menor y avanzo hasta el proximo positivo
-                float min = values[i];
-                for (int j = i; j < values.length; j++, i++) {
-                    if (values[j] > 0) {
-                        i--;
-                        break;
-                    }
-                    if (values[j] < min) {
-                        min = values[j];
-                    }
-                }
-                simplifiedValues.add(min);
-            }
-            else {
-                // Si estoy en uno positivo, agarro el mayor y avanzo hasta el proximo negativo
+        for (int i = 0; i < values.length - 1; i++) {
+            if (values[i] <= values[i + 1]) {
+                // Si estoy en una subida, agarro el mas alto de la subida
                 float max = values[i];
-                for (int j = i; j < values.length; j++, i++) {
-                    if (values[j] < 0) {
+                for (int j = i; j < values.length - 1; j++, i++) {
+                    if (values[j] > values[j + 1]) {
+                        // Llegue a la cima
                         i--;
                         break;
                     }
-                    if (values[j] > max) {
+                    if (values[j] < max) {
                         max = values[j];
                     }
                 }
                 simplifiedValues.add(max);
             }
+            else {
+                // Si estoy en una bajada, agarro el menor de la bajada
+                float min = values[i];
+                for (int j = i; j < values.length - 1; j++, i++) {
+                    if (values[j] < values[j + 1]) {
+                        // Llegue al valle
+                        i--;
+                        break;
+                    }
+                    if (values[j] > min) {
+                        min = values[j];
+                    }
+                }
+                simplifiedValues.add(min);
+            }
         }
+        simplifiedValues.add(values[values.length - 1]);
         return simplifiedValues;
     }
 }
